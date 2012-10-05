@@ -1,0 +1,62 @@
+name: RpCraft
+main: de.henry4k.rpcraft.RpCraft
+version: 0.1.0
+description: Mhmmm role play stuff!
+authors: [Nameless_Fox, henry4k]
+
+commands:
+  ooc:
+    description: Switch or send to OOC
+    usage: /<command> [text]
+    permission: rpcraft.ooc
+  say:
+    description: Switch to talk mode or say something
+    usage: /<command> [text]
+    permission: rpcraft.local
+  whisper:
+    description: Switch to whisper mode or whisper something
+    usage: /<command> [text]
+    permission: rpcraft.local
+  shout:
+    description: Switch to shout mode or shout something
+    usage: /<command> [text]
+    permission: rpcraft.local
+  me:
+    description: Switch to emote mode or emote something
+    usage: /<command> [text]
+    permission: rpcraft.local
+  radio:
+    description: Switch to radio mode or talk over the radio
+    usage: /<command> [text]
+    permission: rpcraft.radio
+  radiochannel:
+    description: Either show the current radio channel or change it
+    usage: /<command> [new channel]
+    permission: rpcraft.radio
+
+permissions:
+  rpcraft.*:
+    description: Gives access to all rpcraft commands
+    children:
+      rpcraft.ooc: true
+      rpcraft.local: true
+      rpcraft.radio: true
+      rpcraft.gm: true
+  rpcraft.ooc:
+    description: Enables OOC chat
+    default: true
+  rpcraft.local:
+    description: Enables local chat and emotes
+    default: true
+  rpcraft.radio:
+    description: Enables radio chat
+    default: true
+    children:
+      rpcraft.local: true
+  rpcraft.gm:
+    description: Game master chat
+    default: op
+    children:
+      rpcraft.ooc: true
+      rpcraft.local: true
+      rpcraft.radio: true
