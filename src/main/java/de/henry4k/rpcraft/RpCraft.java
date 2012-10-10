@@ -1,7 +1,6 @@
 package de.henry4k.rpcraft;
 
 import java.util.Map;
-import java.util.logging.Logger;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.entity.Player;
@@ -18,7 +17,6 @@ public class RpCraft extends JavaPlugin {
 		chatSystem = new ChatSystem(this);
 		
 		getCommand("ooc")         .setExecutor(chatSystem);
-		getCommand("gm")          .setExecutor(chatSystem);
 		getCommand("say")         .setExecutor(chatSystem);
 		getCommand("whisper")     .setExecutor(chatSystem);
 		getCommand("shout")       .setExecutor(chatSystem);
@@ -41,5 +39,16 @@ public class RpCraft extends JavaPlugin {
 		// TODO: Check this and adjust the code if needed.
 
 		getLogger().info("RpCraft unloaded!");
+	}
+	
+	public PlayerSettings getPlayerSettings( Player player ) {
+		if(playerSettings.containsKey(player)) {
+			return playerSettings.get(player);
+		}
+		else {
+			PlayerSettings settings = new PlayerSettings();
+			playerSettings.put(player, settings);
+			return settings;
+		}
 	}
 }
