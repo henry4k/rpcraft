@@ -8,6 +8,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.entity.Player;
 
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
 public class ChatSystem implements CommandExecutor {
 	private RpCraft plugin = null;
 
@@ -22,8 +25,7 @@ public class ChatSystem implements CommandExecutor {
 		if(cmd.equals("whisper")) return ChatMode.WHISPER;
 		if(cmd.equals("shout"))   return ChatMode.SHOUT;
 		if(cmd.equals("me"))      return ChatMode.EMOTE;
-		if(cmd.equals("radio"))   return ChatMode.RADIO;
-		throw new Error("Invalid chat mode");
+		return null;
 	}
 
 	public static boolean CheckPermission( ChatMode mode, Player player ) {
@@ -36,9 +38,6 @@ public class ChatSystem implements CommandExecutor {
 			case SHOUT:
 			case EMOTE:
 				return player.hasPermission("rpcraft.local");
-
-			case RADIO:
-				return player.hasPermission("rpcraft.radio");
 
 			default:
 				throw new Error("Invalid ChatMode enum.");
@@ -60,7 +59,7 @@ public class ChatSystem implements CommandExecutor {
 		else                   return ChatColor.WHITE;
 	}
 
-	public static String DestroyText( String text, float destructionFactor ) {
+	public static String DestroyText( String text, float destructionFactor, char destructionChar ) {
 		StringBuilder builder = new StringBuilder();
 		for(int i = 0; i < text.length(); ++i) {
 			// TODO
@@ -68,29 +67,37 @@ public class ChatSystem implements CommandExecutor {
 				builder.append( text.charAt(i) );
 			}
 			else {
-				builder.append('.');
+				builder.append(destructionChar);
 			}
 		}
 		return builder.toString();
 	}
+	
+	public void localChat( Player player, String prefix, String text, float maxDistance ) {
+		prefix = player.getPlayerListName()+prefix;
+		
+		localSound(player.getLocation(), prefix, text, maxDistance);
+		
+		if(player.hasPermission("rpcraft.radio") && plugin.getPlayerSettings(player).getRadioMicrophone() ) {
+			radioChat(player, prefix, text);
+		}
+	}
 
-	/* TODO
-	 * Die Funktion muss wissen,
-	 * wie der "prefix" String aussieht bzw wie er verändert wird.
-	 * - Lou shouts: ...
-	 * - Someone shouts: ...
-	 * - The solution beginns to bubble.. (hier gibts keine Nachricht..)
-	 * - usw.
-	 */
-
-	// TODO: "prefix" looks misfitting
+	public String destroyMessage( String prefix, String message, float destruction, char destructionChar ) {
+		if(destruction > 0.5) {
+			return prefix+DestroyText(message, destruction, destructionChar);
+		}
+		else {
+			return DestroyText(message, destruction, destructionChar);
+		}
+	}
+	
 	public void localSound( Location originLocation, String prefix, String text, float maxDistance ) {
 		World originWorld = originLocation.getWorld();
 		Player[] players = plugin.getServer().getOnlinePlayers();
 		Player curPlayer = null;
 		float  distance = 0.0f;
 		float  visibillity = 0.0f;
-		String modifiedText = "";
 
 		prefix = ChatColor.stripColor(prefix);
 		text   = ChatColor.stripColor(text);
@@ -109,26 +116,50 @@ public class ChatSystem implements CommandExecutor {
 			}
 			
 			visibillity = 1.0f - distance/maxDistance;
-			modifiedText = text;
-			
-			if(visibillity < 0.5f) {
-				modifiedText = DestroyText(modifiedText, visibillity*2.0f);
-			}
 			
 			curPlayer.sendRawMessage(
 				FormatCode(GetGreyscaleColor(visibillity))+
-				prefix+
-				modifiedText
+				destroyMessage(prefix, text, (visibillity >= 0.5f)?(1.0f):(visibillity*2.0f), '.')
 			);
 		}
 	}
 
-	public String genString( char ch, int amount ) {
-		StringBuilder builder = new StringBuilder();
-		for(; amount > 0; --amount) {
-			builder.append(ch);
+	public void radioChat( Player originPlayer, String prefix, String message ) {
+		int channel = plugin.getPlayerSettings(originPlayer).getRadioChannel();
+		Player[] players = plugin.getServer().getOnlinePlayers();
+		Player curPlayer = null;
+		int curChannel = 0;
+		float destruction = 0.0f;
+		
+		for(int i = 0; i < players.length; ++i) {
+			curPlayer = players[i];
+
+			if(curPlayer == originPlayer) {
+				continue;
+			}
+
+			curChannel = plugin.getPlayerSettings(curPlayer).getRadioChannel();
+			
+			if(curChannel == 0) {
+				continue;
+			}
+
+			destruction = 1.0f - ((float)Math.abs(channel - curChannel) / 10.0f);
+
+			if(curPlayer.getWorld() != originPlayer.getWorld()) {
+				destruction += 0.5f;
+				if(destruction > 1.0f) {
+					destruction = 1.0f;
+				}
+			}
+			
+			curPlayer.sendRawMessage(
+				FormatCode(ChatColor.GRAY)+
+				"[RADIO] "+
+				FormatCode(ChatColor.RESET)+
+				destroyMessage(prefix, message, destruction, '/')
+			);
 		}
-		return builder.toString();
 	}
 
 	public boolean chat( Player player, ChatMode mode, String message ) {
@@ -137,9 +168,6 @@ public class ChatSystem implements CommandExecutor {
 			player.sendMessage("You have insufficient permissions to use "+mode);
 			return false;
 		}
-
-		// More code goes here.
-		// plugin.getServer().broadcastMessage(player.getName()+" "+mode+": "+message);
 		
 		switch(mode) {
 			case OOC:
@@ -169,19 +197,19 @@ public class ChatSystem implements CommandExecutor {
 						verb = "says";
 				}
 
-				localSound(player.getLocation(), player.getPlayerListName()+" "+verb+": ", message, 30);
+				localChat(player, " "+verb+": ", message, 30);
 				break;
 
 			case WHISPER:
-				localSound(player.getLocation(), player.getPlayerListName()+" whispers: ", message, 10);
+				localChat(player, " whispers: ", message, 10);
 				break;
 
 			case SHOUT:
-				localSound(player.getLocation(), player.getPlayerListName()+" shouts: ", message.toUpperCase()+genString('!', 1+(int)Math.random()*2), 70);
+				localChat(player, " shouts: ", message.toUpperCase(), 70);
 				break;
 
 			case EMOTE:
-				localSound(player.getLocation(), player.getPlayerListName()+" "+message, "", 30);
+				localChat(player, " "+message, "", 30);
 				break;
 
 			default:
@@ -200,35 +228,91 @@ public class ChatSystem implements CommandExecutor {
 		}
 		return builder.toString();
 	}
+
+	static Matcher RadioChannelMatcher = Pattern.compile("([0-9]{1,3})\\.([0-9])").matcher("");
+
+	/**
+	 * Parses a string of the form XXX.Y
+	 * Returns -1 on error or XXXY on success.
+	 */
+	public static int RadioChannelByString( String str ) {
+		RadioChannelMatcher.reset(str);
+		if(RadioChannelMatcher.matches()) {
+			return
+				Integer.valueOf(RadioChannelMatcher.group(1))*10 +
+				Integer.valueOf(RadioChannelMatcher.group(2));
+		}
+		else {
+			return -1;
+		}
+	}
+
+	public static String RadioChannelToString( int ch ) {
+		return ""+(ch/10)+"."+(ch - (ch/10*10));
+	}
 	
 	public boolean onCommand( CommandSender sender, Command cmd, String label, String[] args ) {
-		try {
-			ChatMode mode = GetModeByString(cmd.getName());
-			
-			if(!(sender instanceof Player)) {
-				sender.sendMessage("Only players can use this command!");
-				return false;
-			}
-			Player player = (Player)sender;
+		if(!(sender instanceof Player)) {
+			sender.sendMessage("Only players can use this command!");
+			return false;
+		}
+		Player player = (Player)sender;
+		
+		ChatMode mode = GetModeByString(cmd.getName());
+		if(mode != null) {
 			String message = mergeArguments(args);
 			
 			if(args.length == 0) {
 				plugin.getPlayerSettings(player).setChatMode(mode);
-				sender.sendMessage("Chat mode is now "+mode+" (FAKE!)");
+				sender.sendMessage("Chat mode is now "+mode+" (UNIMPLEMENTED!)");
 			}
 			else {
 				return chat(player, mode, message);
 			}
 		}
-		catch( IllegalArgumentException e ) {
-			// silently ignored
-		}
 		
 		// When its not a chat mode
 		// try the other commands:
-		
-		if(cmd.getName().equalsIgnoreCase("radiochannel")) {
-			// ...
+
+		if(cmd.getName().equalsIgnoreCase("radio")) {
+			if(args.length == 0) {
+				if(plugin.getPlayerSettings(player).getRadioMicrophone()) {
+					sender.sendMessage("Your microphone is enabled.");
+				}
+				else {
+					sender.sendMessage("Your microphone is disabled.");
+				}
+			}
+			else {
+				if(args[0].equals("0")) {
+					plugin.getPlayerSettings(player).setRadioMicrophone(false);
+					sender.sendMessage("You switch your microphone off.");
+				}
+				else {
+					plugin.getPlayerSettings(player).setRadioMicrophone(true);
+					sender.sendMessage("You switch your microphone on.");
+				}
+			}
+			return true;
+		}
+		else if(cmd.getName().equalsIgnoreCase("radiochannel")) {
+			if(args.length == 0) {
+				sender.sendMessage(
+					"You are currently speaking on channel "+
+					RadioChannelToString( plugin.getPlayerSettings(player).getRadioChannel() )
+				);
+			}
+			else {
+				int ch = RadioChannelByString(args[0]);
+
+				if(ch != -1) {
+					sender.sendMessage("You are speaking now on channel "+RadioChannelToString(ch));
+					plugin.getPlayerSettings(player).setRadioChannel(ch);
+				}
+				else {
+					sender.sendMessage("Radio channels have the form XXX.X");
+				}
+			}
 			return true;
 		}
 

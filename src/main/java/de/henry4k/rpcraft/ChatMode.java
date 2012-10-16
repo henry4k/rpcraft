@@ -5,6 +5,5 @@ enum ChatMode {
 	TALK,
 	WHISPER,
 	SHOUT,
-	EMOTE,
-	RADIO
+	EMOTE
 }

@@ -7,10 +7,12 @@ class PlayerSettings {
 	 */
 	private ChatMode chatMode;
 	private int radioChannel;
+	private boolean radioMicrophone;
 
 	public PlayerSettings() {
 		chatMode = ChatMode.TALK;
 		radioChannel = -1;
+		radioMicrophone = false;
 	}
 
 	public ChatMode getChatMode() {
@@ -27,5 +29,13 @@ class PlayerSettings {
 
 	public void setRadioChannel( int channel ) {
 		radioChannel = channel;
+	}
+
+	public boolean getRadioMicrophone() {
+		return radioMicrophone;
+	}
+
+	public void setRadioMicrophone( boolean state ) {
+		radioMicrophone = state;
 	}
 }

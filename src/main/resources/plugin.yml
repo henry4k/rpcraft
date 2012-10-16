@@ -6,18 +6,22 @@ authors: [Nameless_Fox, henry4k]
 
 commands:
   ooc:
+    aliases: [o]
     description: Switch or send to OOC
     usage: /<command> [text]
     permission: rpcraft.ooc
   say:
+    aliases: [s]
     description: Switch to talk mode or say something
     usage: /<command> [text]
     permission: rpcraft.local
   whisper:
+    aliases: [wh, w]
     description: Switch to whisper mode or whisper something
     usage: /<command> [text]
     permission: rpcraft.local
   shout:
+    aliases: [sh, s]
     description: Switch to shout mode or shout something
     usage: /<command> [text]
     permission: rpcraft.local
@@ -26,10 +30,12 @@ commands:
     usage: /<command> [text]
     permission: rpcraft.local
   radio:
-    description: Switch to radio mode or talk over the radio
-    usage: /<command> [text]
+    aliases: [r]
+    description: Either check or switch your microphone on and off
+    usage: /<command> [state]
     permission: rpcraft.radio
   radiochannel:
+    aliases: [radioch, rch]
     description: Either show the current radio channel or change it
     usage: /<command> [new channel]
     permission: rpcraft.radio
