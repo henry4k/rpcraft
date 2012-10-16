@@ -1,5 +1,8 @@
 package de.henry4k.rpcraft;
 
+import org.bukkit.World;
+import org.bukkit.Location;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.CommandExecutor;
@@ -42,12 +45,92 @@ public class ChatSystem implements CommandExecutor {
 		}
 	}
 
-	public FormatCode( ChatColor code ) {
+	public static String FormatCode( ChatColor code ) {
 		return
 			Character.toString((char)ChatColor.COLOR_CHAR) +
-			Character.toString(
+			Character.toString(code.getChar());
 	}
-	
+
+	/**
+	 * 0.0 is black and 1.0 is white; linear transition
+	 */
+	public static ChatColor GetGreyscaleColor( float factor ) {
+		if(factor < 0.33f)      return ChatColor.DARK_GRAY;
+		else if(factor < 0.66f) return ChatColor.GRAY;
+		else                   return ChatColor.WHITE;
+	}
+
+	public static String DestroyText( String text, float destructionFactor ) {
+		StringBuilder builder = new StringBuilder();
+		for(int i = 0; i < text.length(); ++i) {
+			// TODO
+			if(Math.random() < destructionFactor) {
+				builder.append( text.charAt(i) );
+			}
+			else {
+				builder.append('.');
+			}
+		}
+		return builder.toString();
+	}
+
+	/* TODO
+	 * Die Funktion muss wissen,
+	 * wie der "prefix" String aussieht bzw wie er verändert wird.
+	 * - Lou shouts: ...
+	 * - Someone shouts: ...
+	 * - The solution beginns to bubble.. (hier gibts keine Nachricht..)
+	 * - usw.
+	 */
+
+	// TODO: "prefix" looks misfitting
+	public void localSound( Location originLocation, String prefix, String text, float maxDistance ) {
+		World originWorld = originLocation.getWorld();
+		Player[] players = plugin.getServer().getOnlinePlayers();
+		Player curPlayer = null;
+		float  distance = 0.0f;
+		float  visibillity = 0.0f;
+		String modifiedText = "";
+
+		prefix = ChatColor.stripColor(prefix);
+		text   = ChatColor.stripColor(text);
+		
+		for(int i = 0; i < players.length; ++i) {
+			curPlayer = players[i];
+			
+			if(curPlayer.getWorld() != originWorld) {
+				continue;
+			}
+			
+			distance = (float)curPlayer.getLocation().distance(originLocation);
+			
+			if(distance >= maxDistance) {
+				continue;
+			}
+			
+			visibillity = 1.0f - distance/maxDistance;
+			modifiedText = text;
+			
+			if(visibillity < 0.5f) {
+				modifiedText = DestroyText(modifiedText, visibillity*2.0f);
+			}
+			
+			curPlayer.sendRawMessage(
+				FormatCode(GetGreyscaleColor(visibillity))+
+				prefix+
+				modifiedText
+			);
+		}
+	}
+
+	public String genString( char ch, int amount ) {
+		StringBuilder builder = new StringBuilder();
+		for(; amount > 0; --amount) {
+			builder.append(ch);
+		}
+		return builder.toString();
+	}
+
 	public boolean chat( Player player, ChatMode mode, String message ) {
 		if(CheckPermission(mode, player) == false) {
 			// TODO: Inform the player that they has insufficient permissions.
@@ -56,11 +139,53 @@ public class ChatSystem implements CommandExecutor {
 		}
 
 		// More code goes here.
-		plugin.getServer().broadcastMessage(player.getName()+" "+mode+": "+message);
+		// plugin.getServer().broadcastMessage(player.getName()+" "+mode+": "+message);
 		
 		switch(mode) {
 			case OOC:
+				plugin.getServer().broadcastMessage(
+						FormatCode(ChatColor.YELLOW)+
+						"[OOC] "+
+						FormatCode(ChatColor.RESET)+
+						player.getPlayerListName()+
+						": "+
+						message
+				);
+				break;
 
+			case TALK:
+				char lastChar = message.charAt( message.length()-1 );
+				String verb = null;
+				switch(lastChar) {
+					case '?':
+						verb = "asks";
+						break;
+
+					case '!':
+						verb = "exclaims";
+						break;
+
+					default:
+						verb = "says";
+				}
+
+				localSound(player.getLocation(), player.getPlayerListName()+" "+verb+": ", message, 30);
+				break;
+
+			case WHISPER:
+				localSound(player.getLocation(), player.getPlayerListName()+" whispers: ", message, 10);
+				break;
+
+			case SHOUT:
+				localSound(player.getLocation(), player.getPlayerListName()+" shouts: ", message.toUpperCase()+genString('!', 1+(int)Math.random()*2), 70);
+				break;
+
+			case EMOTE:
+				localSound(player.getLocation(), player.getPlayerListName()+" "+message, "", 30);
+				break;
+
+			default:
+				throw new Error("Oh Shit!");
 		}
 
 		return true;
