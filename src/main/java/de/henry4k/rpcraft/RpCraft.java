@@ -15,7 +15,7 @@ public class RpCraft extends JavaPlugin {
 		
 		playerSettings = new java.util.HashMap<Player, PlayerSettings>();
 		chatSystem = new ChatSystem(this);
-		
+
 		getCommand("ooc")         .setExecutor(chatSystem);
 		getCommand("say")         .setExecutor(chatSystem);
 		getCommand("whisper")     .setExecutor(chatSystem);

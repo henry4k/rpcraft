@@ -6,18 +6,24 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.CommandExecutor;
+import org.bukkit.event.Listener;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.entity.Player;
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-public class ChatSystem implements CommandExecutor {
+public class ChatSystem implements CommandExecutor, Listener {
 	private RpCraft plugin = null;
 
 	public ChatSystem( RpCraft plugin ) {
 		this.plugin = plugin;
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
 	}
-	
+
 	public static ChatMode GetModeByString( String cmd ) {
 		cmd = cmd.toLowerCase();
 		if(cmd.equals("ooc"))     return ChatMode.OOC;
@@ -264,7 +270,6 @@ public class ChatSystem implements CommandExecutor {
 			
 			if(args.length == 0) {
 				plugin.getPlayerSettings(player).setChatMode(mode);
-				sender.sendMessage("Chat mode is now "+mode+" (UNIMPLEMENTED!)");
 			}
 			else {
 				return chat(player, mode, message);
@@ -317,5 +322,16 @@ public class ChatSystem implements CommandExecutor {
 		}
 
 		return false;
+	}
+
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerChat( PlayerChatEvent event ) {
+		Player player  = event.getPlayer();
+		String message = event.getMessage();
+		ChatMode mode  = plugin.getPlayerSettings(player).getChatMode();
+		
+		if(chat(player, mode, message)) {
+			event.setCancelled(true);
+		}
 	}
 }
